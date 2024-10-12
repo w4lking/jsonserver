@@ -32,7 +32,7 @@ app.listen(Port, function() {
 });
 
 app.get('/', function(req, res) {
-    res.send('Hello server 5000 is working');
+    res.send('Hello server 5000 is working as expected 1.2.1');
 });
 
 app.post('/', function(req, res) {
