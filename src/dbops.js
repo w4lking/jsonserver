@@ -49,6 +49,49 @@ function createRouter(db) {
             }
         });
       });
+
+    router.post('/api/user/authenticate', (req, res) => {
+        const { id } = req.body;
+        const qryString = 'UPDATE usuarios SET autenticado = 1 WHERE idusuarios = ?';
+    
+        db.query(qryString, [id], (error, results) => {
+            if (error) {
+                return res.status(500).json({ ok: false, status: 'error', message: 'Database error' });
+            }
+    
+            if (results.affectedRows > 0) {
+                return res.status(200).json({ ok: true, status: 'success', message: 'User authenticated' });
+            } else {
+                return res.status(404).json({ ok: false, status: 'error', message: 'User not found' });
+            }
+        });
+    });
+
+    // Rota para bloquear/desbloquear o usuário
+router.post('/api/user/block', (req, res) => {
+    const { id, bloqueado } = req.body;
+
+    if (!id || typeof bloqueado === 'undefined') {
+        return res.status(400).json({ ok: false, status: 'error', message: 'User ID and block status are required' });
+    }
+
+    const qryString = 'UPDATE usuarios SET bloqueado = ? WHERE idusuarios = ?';
+    
+    db.query(qryString, [bloqueado, id], (error, results) => {
+        if (error) {
+            console.error('Database error:', error);
+            return res.status(500).json({ ok: false, status: 'error', message: 'Database error' });
+        }
+
+        if (results.affectedRows > 0) {
+            return res.status(200).json({ ok: true, status: 'success', message: 'User block status updated' });
+        } else {
+            return res.status(404).json({ ok: false, status: 'error', message: 'User not found' });
+        }
+    });
+});
+
+
       
 
       router.get('/api/users', (req, res) => {
@@ -250,8 +293,8 @@ function createRouter(db) {
     
     
 
-    // Rota para autenticar o usuário (apenas verificação de e-mail e senha)
-    router.post('/api/user/login', (req, res) => {
+    // Rota para autenticar o usuário
+router.post('/api/user/login', (req, res) => {
     const { email, senha } = req.body;
 
     // Verifica se o e-mail e a senha foram enviados
@@ -260,7 +303,7 @@ function createRouter(db) {
     }
 
     // Consulta para buscar o usuário pelo e-mail
-    const qryString = 'SELECT idusuarios, email, senha, perfil FROM usuarios WHERE email = ?';
+    const qryString = 'SELECT idusuarios, email, senha, perfil, autenticado, bloqueado FROM usuarios WHERE email = ?';
     db.query(qryString, [email], async (error, results) => {
         if (error) {
             return res.status(500).json({ status: 'error', message: 'Database error' });
@@ -273,17 +316,31 @@ function createRouter(db) {
 
         const user = results[0];
 
+        // Verifica se o usuário está autenticado e não está bloqueado
+        if (user.bloqueado === 1) {
+            return res.status(403).json({ status: 'error', message: 'User is blocked' });
+        }
+
+        if (user.autenticado === 0) {
+            return res.status(403).json({ status: 'error', message: 'User is not authenticated' });
+        }
+
         // Compara a senha fornecida com a senha armazenada
         const isCorrectPass = await bcrypt.compare(senha, user.senha);
 
-        // Se a senha estiver correta, retorna sucesso
         if (isCorrectPass) {
-            return res.status(200).json({ ok: true, perfil: user.perfil });
+            // Se a senha estiver correta, gerar o token JWT
+            const token = jwt.sign({ id: user.idusuarios, perfil: user.perfil }, 'seu-segredo-jwt', { expiresIn: '1h' });
+
+            return res.status(200).json({
+                ok: true,
+                message: 'Login successful',
+                token,
+                perfil: user.perfil
+            });
         } else {
-            console.log('Senha inválida para o usuário:', user.email);
-            return res.status(401).json({ ok: false, message: 'Invalid password' });
+            return res.status(401).json({ status: 'error', message: 'Invalid password' });
         }
-        
     });
 });
 
@@ -313,9 +370,6 @@ function createRouter(db) {
         
     });
     
-
-
-
 
     return router;
 }
