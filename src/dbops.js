@@ -370,27 +370,44 @@ router.post('/api/user/login', (req, res) => {
 
     // Rota para adicionar um novo usuário ------------Funcionando corretamente ------------------
     router.post('/api/user/register', (req, res) => {
-        console.log(req.body); // Adiciona isto para ver os dados recebidos
         const { cpf, nome, email, senha, telefone, perfil } = req.body;
         const hashedPassword = bcrypt.hashSync(senha, saltRounds);
-        console.log('Hashed Password:', hashedPassword);
     
+        // Verifica se já existe um CPF, e-mail ou telefone no banco de dados
         db.query(
-            'INSERT INTO usuarios (nome, cpf, email, telefone, senha, perfil, bloqueado, autenticado) VALUES (?, ?, ?, ?, ?, ?, 0, 0)',
-            [nome, cpf, email, telefone, hashedPassword, perfil],
-            (error) => {
+            'SELECT * FROM usuarios WHERE cpf = ? OR email = ? OR telefone = ?',
+            [cpf, email, telefone],
+            (error, results) => {
                 if (error) {
-                    console.error('Erro na query SQL:', error); // Isso vai mostrar detalhes do erro no console
-                    if (error.code === 'ER_DUP_ENTRY') {
-                        return res.status(409).json({ status: 'error', message: 'Email ou telefone já cadastrados' });
-                    } else {
-                        return res.status(500).json({ status: 'error', message: 'Erro ao cadastrar usuário' });
-                    }
+                    console.error('Erro na query SQL:', error);
+                    return res.status(500).json({ status: 'error', message: 'Erro ao verificar o usuário' });
                 }
-                res.status(200).json({ status: 'ok', message: 'Usuário cadastrado com sucesso' });
+    
+                // Se algum resultado for encontrado, retorna erro
+                if (results.length > 0) {
+                    // Verifica o que já está cadastrado (CPF, e-mail ou telefone)
+                    let message = 'Já existe um cadastro com os seguintes campos: ';
+                    if (results[0].cpf === cpf) message += 'CPF ';
+                    if (results[0].email === email) message += 'Email ';
+                    if (results[0].telefone === telefone) message += 'Telefone ';
+                    
+                    return res.status(409).json({ status: 'error', message: message.trim() });
+                }
+    
+                // Se não encontrar duplicata, prossegue com o cadastro
+                db.query(
+                    'INSERT INTO usuarios (nome, cpf, email, telefone, senha, perfil, bloqueado, autenticado) VALUES (?, ?, ?, ?, ?, ?, 0, 0)',
+                    [nome, cpf, email, telefone, hashedPassword, perfil],
+                    (error) => {
+                        if (error) {
+                            console.error('Erro na query SQL:', error);
+                            return res.status(500).json({ status: 'error', message: 'Erro ao cadastrar usuário' });
+                        }
+                        res.status(200).json({ status: 'ok', message: 'Usuário cadastrado com sucesso' });
+                    }
+                );
             }
         );
-        
     });
     
 
