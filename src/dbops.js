@@ -162,6 +162,29 @@ router.post('/api/user/block', (req, res) => {
         });
     });
 
+
+    router.delete('/api/user/delete', (req, res) => {
+        const id = req.query.id;
+        if (id === undefined) {
+            return res.status(400).json({ status: 'error', message: 'ID is required' });
+        }
+    
+        const qryString = 'DELETE FROM usuarios WHERE idusuarios = ?';
+        db.query(qryString, [id], (error, results) => {
+            if (error) {
+                console.error('Database error:', error);
+                return res.status(500).json({ status: 'error', message: 'Database error' });
+            }
+    
+            if (results.affectedRows > 0) {
+                res.status(200).json({ status: 'success', message: 'User deleted successfully' });
+            } else {
+                res.status(404).json({ status: 'error', message: 'User not found' });
+            }
+        });
+    });
+
+
     router.get('/api/farm', (req, res) => {
         const id = req.query.id;
         if (!id) {
@@ -274,7 +297,7 @@ router.post('/api/user/block', (req, res) => {
         
         console.log('Dados recebidos:', { nome, cpf, email, telefone, salario, senha, idfazendas, idusuario });  // Adicione este log
     
-        if (!nome || !cpf || !email || !telefone || salario == 0 || !senha) {
+        if (!nome || !cpf || !email || !telefone || salario < 1 || !senha || !idfazendas || !idusuario) {
             return res.status(400).json({ status: 'error', message: 'Todos os campos são obrigatórios.' });
         }
     
@@ -370,6 +393,9 @@ router.post('/api/user/login', (req, res) => {
         
     });
     
+
+
+
 
     return router;
 }
