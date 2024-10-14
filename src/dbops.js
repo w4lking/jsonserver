@@ -312,6 +312,28 @@ router.post('/api/user/block', (req, res) => {
             res.status(201).json({ status: 'success', message: 'Funcionário adicionado com sucesso.', id: results });
         });
     });
+
+    router.delete('/api/employees/delete', (req, res) => {
+        console.log('Recebendo requisição para deletar empregado com ID:', req.query.id); // Log adicionado
+        const id = req.query.id;
+        if (!id) {
+            return res.status(400).json({ status: 'error', message: 'ID is required' });
+        }
+        const qryString = 'DELETE FROM funcionarios WHERE idfuncionarios = ?';
+        db.query(qryString, [id], (error, results) => {
+            if (error) {
+                console.error('Database error:', error);
+                return res.status(500).json({ status: 'error', message: 'Database error' });
+            }
+
+            // Verifica se alguma linha foi afetada pela deleção
+            if (results.affectedRows > 0) {
+                res.status(200).json({ status: 'success', message: 'Funcionario deletado com sucesso' });
+            } else {
+                res.status(404).json({ status: 'error', message: 'Funcionario não encontrado' });
+            }
+        });
+    });
     
     
     
