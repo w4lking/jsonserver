@@ -5,6 +5,40 @@ const addLoginLogs = require('./authLogs'); // Função para log de login
 require('dotenv').config(); // Para carregar variáveis de ambiente
 const app = express();
 
+const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
+
+// let transport = nodemailer.createTransport({
+//   service: 'gmail',
+//   auth: {
+//     user: 'agronline55@gmail.com',  // seu email
+//     pass: 'gskq tduw urpb rner'        // sua senha de app
+//   },
+//   connectionTimeout: 60000,  // Aumenta o timeout para 60 segundos
+//   timeout: 60000,
+//   greetingTimeout: 30000
+// });
+
+// transport.sendMail({
+//   from: 'AGROline <agronline55@gmail.com>',
+//   to: 'walkerlayon@gmail.com',
+//   subject: 'Email Teste Nodemailer',
+//   html: '<b>Olá, seja bem-vindo ao AGROline</b>',
+//   attachments: [
+//     {
+//       filename: 'bemvindo.html',
+//       path: './bemvindo.html'
+//     }
+//   ]
+// }, function(error, info) {
+//   if (error) {
+//     console.log('Erro ao enviar email:', error);
+//   } else {
+//     console.log('Email enviado com sucesso:', info.response);
+//   }
+// });
+
 // Middleware para JSON
 app.use(express.json());
 const saltRounds = 10;
@@ -50,22 +84,42 @@ function createRouter(db) {
         });
       });
 
-    router.post('/api/user/authenticate', (req, res) => {
+      router.post('/api/user/authenticate', (req, res) => {
         const { id } = req.body;
         const qryString = 'UPDATE usuarios SET autenticado = 1 WHERE idusuarios = ?';
+        
+        // Primeiro, consulte o e-mail do usuário para enviar a notificação
+        const getUserEmailQuery = 'SELECT email, nome FROM usuarios WHERE idusuarios = ?';
     
-        db.query(qryString, [id], (error, results) => {
+        db.query(getUserEmailQuery, [id], (error, userResults) => {
             if (error) {
                 return res.status(500).json({ ok: false, status: 'error', message: 'Database error' });
             }
     
-            if (results.affectedRows > 0) {
-                return res.status(200).json({ ok: true, status: 'success', message: 'User authenticated' });
-            } else {
+            if (userResults.length === 0) {
                 return res.status(404).json({ ok: false, status: 'error', message: 'User not found' });
             }
+    
+            // Atualiza a autenticação do usuário
+            db.query(qryString, [id], (error, results) => {
+                if (error) {
+                    return res.status(500).json({ ok: false, status: 'error', message: 'Database error' });
+                }
+        
+                if (results.affectedRows > 0) {
+                    // Usuário autenticado com sucesso, envia o e-mail
+                    const user = userResults[0];
+                    sendWelcomeEmail(user.email, user.nome);
+                    
+                    return res.status(200).json({ ok: true, status: 'success', message: 'User authenticated and email sent' });
+                } else {
+                    return res.status(404).json({ ok: false, status: 'error', message: 'User not found' });
+                }
+            });
         });
     });
+
+
 
     // Rota para bloquear/desbloquear o usuário
 router.post('/api/user/block', (req, res) => {
@@ -431,10 +485,40 @@ router.post('/api/user/login', (req, res) => {
             }
         );
     });
+
+// Função para enviar o e-mail de boas-vindas
+function sendWelcomeEmail(email, nome) {
+    // Criar o transportador do Nodemailer
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: 'agronline55@gmail.com', // seu email
+            pass: 'gskq tduw urpb rner'    // sua senha de app
+        }
+    });
+
+    // Ler o arquivo HTML bemvindo.html que está fora do src
+    const filePath = path.join(__dirname, '../bemvindo.html');
+    const htmlContent = fs.readFileSync(filePath, 'utf-8');
+
+    // Definir as opções de e-mail
+    const mailOptions = {
+        from: 'AGROline <agronline55@gmail.com>',
+        to: email,
+        subject: 'Bem-vindo ao AGROline',
+        html: htmlContent.replace('{{nome}}', nome) // Substituir o nome do usuário no HTML
+    };
+
+    // Enviar o e-mail
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            console.log('Erro ao enviar email:', error);
+        } else {
+            console.log('Email enviado com sucesso:', info.response);
+        }
+    });
+}
     
-
-
-
 
     return router;
 }

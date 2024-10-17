@@ -2,7 +2,9 @@
   "name": "nodeexpressservermysql",
   "version": "1.0.0",
   "main": "index.js",
-  "engines":{ "node": "18.x" },
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "start": "node index.js"
   },
@@ -17,6 +19,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
-    "mysql": "^2.18.1"
+    "mysql": "^2.18.1",
+    "nodemailer": "^6.9.15"
   }
 }
