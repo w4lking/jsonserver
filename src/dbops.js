@@ -373,24 +373,37 @@ function createRouter(db) {
   });
 
   // Rota para atualizar fazendas
-  // router.put('/api/farm/update', (req, res) => {
-  //     const { nome, cep, endereco, valor, id } = req.body;
+  router.put("/api/farm/update", (req, res) => {
+    const { nome, cep, endereco, valor, id } = req.body;
 
-  //     if (!nome || !cep || !endereco || valor === undefined || !id) {
-  //         return res.status(400).json({ status: 'error', message: 'Todos os campos são obrigatórios.' });
-  //     }
+    if (!nome || !cep || !endereco || valor === undefined || !id) {
+      return res
+        .status(400)
+        .json({
+          status: "error",
+          message: "Todos os campos são obrigatórios.",
+        });
+    }
 
-  //     const qryString = 'UPDATE fazendas SET nome = ?, cep = ?, endereco = ?, valor = ? WHERE idfazendas = ?';
+    const qryString =
+      "UPDATE fazendas SET nome = ?, cep = ?, endereco = ?, valor = ? WHERE idfazendas = ?";
 
-  //     db.query(qryString, [nome, cep, endereco, valor, id], (error, results) => {
-  //         if (error) {
-  //             console.error('Erro ao atualizar fazenda:', error);
-  //             return res.status(500).json({ status: 'error', message: 'Erro ao atualizar a fazenda.' });
-  //         }
+    db.query(qryString, [nome, cep, endereco, valor, id], (error, results) => {
+      if (error) {
+        console.error("Erro ao atualizar fazenda:", error);
+        return res
+          .status(500)
+          .json({ status: "error", message: "Erro ao atualizar a fazenda." });
+      }
 
-  //         res.status(200).json({ status: 'success', message: 'Fazenda atualizada com sucesso.' });
-  //     });
-  // });
+      res
+        .status(200)
+        .json({
+          status: "success",
+          message: "Fazenda atualizada com sucesso.",
+        });
+    });
+  });
 
   router.get("/api/employees", (req, res) => {
     const id = req.query.id;
@@ -479,6 +492,74 @@ function createRouter(db) {
           status: "success",
           message: "Funcionário adicionado com sucesso.",
           id: results,
+        });
+      }
+    );
+  });
+
+  router.put("/api/employees/update", (req, res) => {
+    const { nome, cpf, email, telefone, salario, id, idFazenda } = req.body;
+
+    // Logando os dados recebidos no corpo da requisição
+    console.log("Dados recebidos para atualização:");
+    console.log("Nome:", nome);
+    console.log("CPF:", cpf);
+    console.log("Email:", email);
+    console.log("Telefone:", telefone);
+    console.log("Salário:", salario);
+    console.log("ID do funcionário:", id);
+    console.log("ID da fazenda:", idFazenda);
+
+    // Verificando se há algum dado faltando ou inválido
+    if (
+      !nome ||
+      !cpf ||
+      !email ||
+      !telefone ||
+      salario < 1 ||
+      !id ||
+      !idFazenda
+    ) {
+      console.log("Erro: Campos obrigatórios ausentes ou inválidos.");
+      return res.status(400).json({
+        status: "error",
+        message: "Todos os campos são obrigatórios.",
+      });
+    }
+
+    const qryString =
+      "UPDATE funcionarios SET nome = ?, cpf = ?, email = ?, telefone = ?, salario = ?, fazendas_idfazendas = ? WHERE idfuncionarios = ?";
+
+    // Logando a consulta SQL antes de executar
+    console.log("Consulta SQL:", qryString);
+    console.log("Valores:", [
+      nome,
+      cpf,
+      email,
+      telefone,
+      salario,
+      idFazenda,
+      id,
+    ]);
+
+    db.query(
+      qryString,
+      [nome, cpf, email, telefone, salario, idFazenda, id],
+      (error, results) => {
+        if (error) {
+          console.error("Erro ao atualizar funcionario:", error);
+          return res.status(500).json({
+            status: "error",
+            message: "Erro ao atualizar o funcionário.",
+          });
+        }
+
+        // Logando o resultado da consulta
+        console.log("Resultado da atualização:", results);
+
+        res.status(200).json({
+          status: "success",
+          message: "Funcionário atualizado com sucesso.",
         });
       }
     );
